@@ -27,7 +27,7 @@ export default function Home({ onNavigate }) {
         {/* Creator Info */}
         <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-6 max-w-md mx-auto mb-8">
           <p className="text-gray-300 mb-2">
-            <span className="font-semibold text-white">Created by:</span> Jayant Keethineni
+            <span className="font-semibold text-white">Created by:</span> jayanth kethineni
           </p>
           <p className="text-gray-300">
             <span className="font-semibold text-white">Email:</span>{' '}

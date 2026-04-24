@@ -2,12 +2,12 @@
 
 A production-ready Interactive Voice Response (IVR) simulation platform demonstrating intelligent call routing, self-service automation, and agent escalation workflows inspired by real-world contact center systems like Genesys.
 
-**Created by:** Jayant Keethineni  
+**Created by:** jayanth kethineni  
 **Email:** jayanth4257@gmail.com
 
 ## 🎯 Live Demo
 
-**[Try VoiceFlow AI Now](https://voiceflow-ai-iota.vercel.app)**
+**[Try VoiceFlow AI Now](https://3000-ixp8fsad4l7kdfc85hp9a-35ee62cc.us1.manus.computer)**
 
 ## 📋 Overview
 
@@ -299,6 +299,7 @@ This project is open source and available under the MIT License.
 
 ## 📞 Support & Contact
 
+- **Created by:** jayanth kethineni
 - **Email:** jayanth4257@gmail.com
 - **GitHub:** https://github.com/jayanth-kethineni/voiceflow-ai
 - **Issues:** https://github.com/jayanth-kethineni/voiceflow-ai/issues
