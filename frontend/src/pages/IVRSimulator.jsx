@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Phone, Send, ArrowLeft, Loader } from 'lucide-react';
-import CallLog from '../components/CallLog';
+import { Phone, Send, ArrowLeft, Clock, MessageCircle } from 'lucide-react';
 
 const IVR_RESPONSES = {
   BALANCE_CHECK: {
@@ -51,7 +50,7 @@ export default function IVRSimulator({ onBack }) {
   const [isCallActive, setIsCallActive] = useState(false);
   const [messages, setMessages] = useState([]);
   const [userInput, setUserInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [logs, setLogs] = useState([]);
   const [callDuration, setCallDuration] = useState(0);
   const messagesEndRef = useRef(null);
@@ -96,20 +95,16 @@ export default function IVRSimulator({ onBack }) {
   };
 
   const handleSendInput = async () => {
-    if (!userInput.trim() || !isCallActive || isLoading) return;
+    if (!userInput.trim() || !isCallActive || isTyping) return;
 
     const input = userInput.trim();
     setUserInput('');
-    setIsLoading(true);
 
     // Add user message
     setMessages(prev => [
       ...prev,
       { type: 'user', content: input, timestamp: new Date() }
     ]);
-
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Detect intent
     const response = detectIntent(input);
@@ -124,11 +119,17 @@ export default function IVRSimulator({ onBack }) {
     };
     setLogs(prev => [...prev, logEntry]);
 
-    // Add system response with typing animation
+    // Simulate typing delay
+    setIsTyping(true);
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 500));
+
+    // Add system response
     setMessages(prev => [
       ...prev,
       { type: 'system', content: response.message, timestamp: new Date() }
     ]);
+
+    setIsTyping(false);
 
     // If escalated, end call after 2 seconds
     if (response.intent === 'AGENT_REQUEST') {
@@ -136,8 +137,6 @@ export default function IVRSimulator({ onBack }) {
         setIsCallActive(false);
       }, 2000);
     }
-
-    setIsLoading(false);
   };
 
   const handleEndCall = () => {
@@ -147,11 +146,48 @@ export default function IVRSimulator({ onBack }) {
     setCallDuration(0);
   };
 
+  const quickAction = (action) => {
+    if (!isCallActive || isTyping) return;
+    setUserInput(action);
+    setTimeout(() => {
+      setUserInput(action);
+      // Trigger send
+      const input = action;
+      setUserInput('');
+      setMessages(prev => [
+        ...prev,
+        { type: 'user', content: input, timestamp: new Date() }
+      ]);
+      const response = detectIntent(input);
+      const logEntry = {
+        id: logs.length + 1,
+        userInput: input,
+        detectedIntent: response.intent,
+        response: response.message,
+        timestamp: new Date()
+      };
+      setLogs(prev => [...prev, logEntry]);
+      setIsTyping(true);
+      setTimeout(() => {
+        setMessages(prev => [
+          ...prev,
+          { type: 'system', content: response.message, timestamp: new Date() }
+        ]);
+        setIsTyping(false);
+        if (response.intent === 'AGENT_REQUEST') {
+          setTimeout(() => {
+            setIsCallActive(false);
+          }, 2000);
+        }
+      }, 1000 + Math.random() * 500);
+    }, 100);
+  };
+
   return (
-    <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <div className="bg-slate-800/80 backdrop-blur border-b border-blue-500/20 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-gray-400 hover:text-white transition"
@@ -159,119 +195,165 @@ export default function IVRSimulator({ onBack }) {
             <ArrowLeft className="w-5 h-5" />
             Back to Home
           </button>
-          <h1 className="text-3xl font-bold text-white">IVR Simulator</h1>
-          <div className="w-24"></div>
+          <h1 className="text-2xl font-bold text-white">IVR Simulator</h1>
+          <div className="flex items-center gap-2 text-blue-400">
+            <Clock className="w-5 h-5" />
+            <span className="font-mono">{formatTime(callDuration)}</span>
+          </div>
         </div>
+      </div>
 
-        {/* Main Content */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Call Interface - Left/Center */}
-          <div className="lg:col-span-2">
-            {/* Call Status Card */}
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${isCallActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                  <span className="text-white font-semibold">
-                    {isCallActive ? 'Call Connected' : 'Call Ended'}
-                  </span>
-                </div>
-                <span className="text-gray-400 font-mono">{formatTime(callDuration)}</span>
-              </div>
-
-              {/* Call Control Buttons */}
-              <div className="flex gap-3">
-                {!isCallActive ? (
-                  <button
-                    onClick={handleStartCall}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    <Phone className="w-5 h-5" />
-                    Start Call
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleEndCall}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    <Phone className="w-5 h-5" />
-                    End Call
-                  </button>
-                )}
-              </div>
+      {/* Main Content */}
+      <div className="flex-1 flex gap-6 p-6 max-w-7xl mx-auto w-full">
+        {/* Chat Section */}
+        <div className="flex-1 flex flex-col">
+          {/* Call Status */}
+          <div className="bg-slate-800/60 border border-blue-500/20 rounded-lg p-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-3 h-3 rounded-full ${isCallActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className="text-white font-semibold">
+                {isCallActive ? '🟢 Call Connected' : '🔴 Call Ended'}
+              </span>
             </div>
+            <span className="text-gray-400 font-mono text-lg">{formatTime(callDuration)}</span>
+          </div>
 
-            {/* Chat Interface */}
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
-              <div className="h-96 bg-slate-900/50 rounded-lg p-4 mb-4 overflow-y-auto flex flex-col">
-                {messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <p>Start a call to begin</p>
-                  </div>
-                ) : (
-                  <>
-                    {messages.map((msg, idx) => (
+          {/* Chat Container */}
+          <div className="flex-1 bg-slate-800/40 rounded-lg border border-blue-500/20 p-6 flex flex-col mb-6 min-h-96">
+            {!isCallActive && messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <Phone className="w-16 h-16 text-blue-500/50 mb-4" />
+                <p className="text-gray-400 text-center mb-6 text-lg">No active call</p>
+                <button
+                  onClick={handleStartCall}
+                  className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-bold py-3 px-8 rounded-lg flex items-center gap-2 transition transform hover:scale-105"
+                >
+                  <Phone className="w-5 h-5" />
+                  Start Call
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
+                  {messages.map((msg, idx) => (
+                    <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div
-                        key={idx}
-                        className={`mb-4 flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
+                        className={`max-w-sm px-4 py-3 rounded-lg ${
+                          msg.type === 'user'
+                            ? 'bg-blue-600 text-white rounded-br-none'
+                            : 'bg-slate-700 text-gray-100 rounded-bl-none'
+                        }`}
                       >
-                        <div
-                          className={`max-w-xs px-4 py-2 rounded-lg ${
-                            msg.type === 'user'
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-slate-700 text-gray-100'
-                          }`}
-                        >
-                          <p className="text-sm">{msg.content}</p>
-                          <p className="text-xs mt-1 opacity-70">
-                            {msg.timestamp.toLocaleTimeString()}
-                          </p>
+                        <p className="text-sm leading-relaxed">{msg.content}</p>
+                        <p className="text-xs mt-2 opacity-70">{msg.timestamp.toLocaleTimeString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {isTyping && (
+                    <div className="flex justify-start">
+                      <div className="bg-slate-700 text-gray-100 px-4 py-3 rounded-lg rounded-bl-none">
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                         </div>
                       </div>
-                    ))}
-                    {isLoading && (
-                      <div className="flex justify-start mb-4">
-                        <div className="bg-slate-700 text-gray-100 px-4 py-2 rounded-lg flex items-center gap-2">
-                          <Loader className="w-4 h-4 animate-spin" />
-                          <span className="text-sm">Processing...</span>
-                        </div>
-                      </div>
-                    )}
-                    <div ref={messagesEndRef} />
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Quick Actions */}
+                {isCallActive && messages.length > 0 && !isTyping && (
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    <button
+                      onClick={() => quickAction('1')}
+                      className="bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm transition font-medium"
+                    >
+                      💰 Balance
+                    </button>
+                    <button
+                      onClick={() => quickAction('2')}
+                      className="bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm transition font-medium"
+                    >
+                      📊 Transactions
+                    </button>
+                    <button
+                      onClick={() => quickAction('agent')}
+                      className="bg-slate-700 hover:bg-slate-600 text-white py-2 px-3 rounded text-sm transition font-medium"
+                    >
+                      👤 Agent
+                    </button>
+                  </div>
+                )}
+
+                {/* Input Section */}
+                {isCallActive && (
+                  <>
+                    <div className="flex gap-2 mb-3">
+                      <input
+                        type="text"
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSendInput()}
+                        placeholder="Type: 1, 2, or 'agent'"
+                        disabled={isTyping}
+                        className="flex-1 bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none disabled:opacity-50"
+                      />
+                      <button
+                        onClick={handleSendInput}
+                        disabled={!userInput.trim() || isTyping}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-3 rounded-lg transition flex items-center gap-2 disabled:cursor-not-allowed"
+                      >
+                        <Send className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* End Call Button */}
+                    <button
+                      onClick={handleEndCall}
+                      className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition"
+                    >
+                      End Call
+                    </button>
                   </>
                 )}
-              </div>
+              </>
+            )}
+          </div>
+        </div>
 
-              {/* Input Area */}
-              {isCallActive && (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter: 1, 2, or 'agent'"
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') handleSendInput();
-                    }}
-                    disabled={isLoading}
-                    className="flex-1 bg-slate-900 border border-slate-600 text-white px-4 py-2 rounded-lg focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                  />
-                  <button
-                    onClick={handleSendInput}
-                    disabled={isLoading || !userInput.trim()}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
+        {/* Call Log Panel */}
+        <div className="w-80 bg-slate-800/40 rounded-lg border border-blue-500/20 p-4 flex flex-col">
+          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-blue-500/20">
+            <MessageCircle className="w-5 h-5 text-blue-400" />
+            <h2 className="font-bold text-white">Call Log</h2>
+          </div>
+
+          <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+            {logs.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center py-8">No activity yet</p>
+            ) : (
+              logs.map((log, idx) => (
+                <div key={idx} className="bg-slate-700/50 rounded p-3 text-xs border-l-2 border-blue-500">
+                  <p className="text-gray-400 mb-1">{log.timestamp.toLocaleTimeString()}</p>
+                  <p className="text-blue-300 font-semibold mb-1">Input: {log.userInput}</p>
+                  <p className="text-green-300 text-xs mb-1">Intent: {log.detectedIntent}</p>
+                  <p className="text-gray-300 break-words text-xs">Response: {log.response}</p>
                 </div>
-              )}
-            </div>
+              ))
+            )}
           </div>
 
-          {/* Call Log - Right Sidebar */}
-          <div className="lg:col-span-1">
-            <CallLog logs={logs} />
-          </div>
+          {/* Stats */}
+          {logs.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-blue-500/20">
+              <p className="text-gray-400 text-xs">
+                Total Interactions: <span className="text-blue-300 font-bold">{logs.length}</span>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
