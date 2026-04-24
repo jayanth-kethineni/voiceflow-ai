@@ -31,8 +31,8 @@ export default function Home({ onNavigate }) {
           </p>
           <p className="text-gray-300">
             <span className="font-semibold text-white">Email:</span>{' '}
-            <a href="mailto:jayantforty57@gmail.com" className="text-blue-400 hover:text-blue-300">
-              jayantforty57@gmail.com
+            <a href="mailto:jayanth4257@gmail.com" className="text-blue-400 hover:text-blue-300">
+              jayanth4257@gmail.com
             </a>
           </p>
         </div>
